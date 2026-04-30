@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pop Zingers — Irreverent Music Trivia</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: #0d0d0d;
+      font-family: 'Georgia', serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      position: relative;
+      overflow-x: hidden;
+    }
+    .bg-gradient {
+      position: fixed; inset: 0; z-index: 0;
+      background: radial-gradient(ellipse at 20% 50%, #1a0a2e 0%, transparent 60%),
+                  radial-gradient(ellipse at 80% 20%, #0a1a2e 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .bg-vinyl {
+      position: fixed; right: -80px; top: -80px;
+      width: 300px; height: 300px; border-radius: 50%;
+      background: repeating-radial-gradient(circle, #1a1a1a 0px, #222 2px, #1a1a1a 4px);
+      border: 4px solid #333; opacity: 0.3; z-index: 0;
+    }
+    .game-wrap {
+      position: relative; z-index: 1;
+      width: 100%; max-width: 640px;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in { animation: fadeIn 0.4s ease; }
+
+    /* INTRO */
+    .intro { text-align: center; animation: fadeIn 0.6s ease; }
+    .intro-eyebrow { font-size: 13px; letter-spacing: 6px; color: #ffcc00; text-transform: uppercase; margin-bottom: 12px; font-family: monospace; }
+    .intro-title-pop { font-size: clamp(52px, 12vw, 88px); font-weight: 900; color: #fff; margin: 0 0 4px; line-height: 1; text-shadow: 4px 4px 0px #ffcc00, 8px 8px 0px #ff4455; }
+    .intro-title-zingers { font-size: clamp(52px, 12vw, 88px); font-weight: 900; color: #ffcc00; margin: 0 0 20px; line-height: 1; text-shadow: 4px 4px 0px #ff4455; }
+    .intro-sub { color: #aaa; font-size: 16px; max-width: 400px; margin: 0 auto 40px; line-height: 1.6; }
+
+    /* BUTTONS */
+    .btn-play, .btn-next, .btn-again {
+      background: #ffcc00; color: #0d0d0d; border: none;
+      font-family: monospace; font-weight: 900; text-transform: uppercase; letter-spacing: 2px;
+      cursor: pointer; box-shadow: 4px 4px 0px #ff4455;
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+    .btn-play { padding: 16px 48px; font-size: 20px; }
+    .btn-next, .btn-again { padding: 14px 40px; font-size: 16px; }
+    .btn-play:active, .btn-next:active, .btn-again:active {
+      transform: translate(4px, 4px); box-shadow: 0 0 0 #ff4455;
+    }
+
+    /* QUESTION */
+    .q-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .q-label { font-family: monospace; color: #666; font-size: 13px; letter-spacing: 2px; }
+    .q-score { font-family: monospace; color: #ffcc00; font-size: 13px; letter-spacing: 2px; }
+    .timer-bar { height: 4px; background: #222; margin-bottom: 24px; border-radius: 2px; }
+    .timer-fill { height: 100%; border-radius: 2px; transition: width 1s linear, background 0.5s; }
+    .timer-num { text-align: right; font-family: monospace; font-size: 28px; margin-bottom: 16px; font-weight: bold; }
+    .zinger-box { background: #111; border: 1px solid #2a2a2a; padding: 24px; margin-bottom: 28px; border-left: 4px solid #ffcc00; }
+    .zinger-label { font-size: 11px; letter-spacing: 4px; color: #ffcc00; font-family: monospace; margin-bottom: 12px; }
+    .zinger-text { color: #fff; font-size: 18px; line-height: 1.7; font-style: italic; }
+    .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .choice-btn {
+      background: #111; border: 2px solid #2a2a2a;
+      cursor: pointer; padding: 0; overflow: hidden;
+      transition: border-color 0.3s, transform 0.1s;
+      text-align: left;
+    }
+    .choice-btn:disabled { cursor: default; }
+    .choice-img-wrap { position: relative; padding-top: 75%; background: #1a1a1a; }
+    .choice-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top; transition: filter 0.3s; }
+    .choice-emoji { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 40px; }
+    .choice-check { position: absolute; top: 8px; right: 8px; background: #00e5a0; color: #000; font-size: 16px; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+    .choice-name { padding: 10px 12px; font-size: 13px; font-family: monospace; letter-spacing: 1px; transition: color 0.3s; }
+
+    /* RESULT */
+    .result { text-align: center; animation: fadeIn 0.4s ease; }
+    .result-emoji { font-size: clamp(48px, 15vw, 80px); margin-bottom: 16px; }
+    .result-title { font-size: clamp(24px, 6vw, 36px); margin: 0 0 8px; font-family: monospace; letter-spacing: 3px; text-transform: uppercase; }
+    .result-answer { color: #888; font-family: monospace; margin-bottom: 24px; }
+    .result-answer span { color: #ffcc00; font-weight: bold; }
+    .fact-box { background: #111; border: 1px solid #2a2a2a; padding: 20px; margin-bottom: 32px; border-left: 4px solid #888; text-align: left; }
+    .fact-label { font-size: 11px; letter-spacing: 3px; color: #888; font-family: monospace; margin-bottom: 10px; }
+    .fact-text { color: #bbb; font-size: 15px; line-height: 1.7; }
+
+    /* GAMEOVER */
+    .gameover { text-align: center; animation: fadeIn 0.5s ease; }
+    .gameover-label { font-size: 11px; letter-spacing: 5px; color: #ffcc00; font-family: monospace; margin-bottom: 16px; }
+    .gameover-score { font-size: clamp(72px, 20vw, 120px); font-weight: 900; color: #fff; line-height: 1; text-shadow: 4px 4px 0 #ffcc00; }
+    .gameover-score span { font-size: 0.4em; color: #555; }
+    .gameover-msg { color: #888; margin-bottom: 40px; font-family: monospace; }
+  </style>
+</head>
+<body>
+  <div class="bg-gradient"></div>
+  <div class="bg-vinyl"></div>
+  <div class="game-wrap" id="app"></div>
+
+  <script>
+    const questions = [
+      {
+        id: 1,
+        zinger: "Which Jesus-looking soft rock heartthrob fell in love with his holistic practitioner... who gave him an enema?",
+        answer: "Kenny Loggins",
+        choices: [
+          { name: "Dan Fogelberg", img: "images/dan_fogelberg.jpg" },
+          { name: "Barry Gibb", img: "images/barry_gibb.jpg" },
+          { name: "Kenny Loggins", img: "images/kenny_loggins.jpg" },
+          { name: "John Lennon", img: "images/john_lennon.jpg" },
+        ],
+        funFact: "Kenny later said: 'Although I was there for a high colonic, it was her eyes that penetrated me.'"
+      }
+    ];
+
+    const TIMER_SECONDS = 15;
+    let state = {
+      screen: "intro",
+      currentQ: 0,
+      selected: null,
+      score: 0,
+      timeLeft: TIMER_SECONDS,
+      timerActive: false,
+      imgErrors: {}
+    };
+    let timerInterval = null;
+
+    function startTimer() {
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        state.timeLeft--;
+        if (state.timeLeft <= 0) {
+          clearInterval(timerInterval);
+          state.timerActive = false;
+          state.selected = "__timeout__";
+          render();
+          setTimeout(() => { state.screen = "result"; render(); }, 300);
+          return;
+        }
+        updateTimer();
+      }, 1000);
+    }
+
+    function stopTimer() { clearInterval(timerInterval); }
+
+    function updateTimer() {
+      const fill = document.querySelector('.timer-fill');
+      const num = document.querySelector('.timer-num');
+      if (!fill || !num) return;
+      const pct = (state.timeLeft / TIMER_SECONDS) * 100;
+      const color = state.timeLeft > 8 ? '#00e5a0' : state.timeLeft > 4 ? '#ffcc00' : '#ff4455';
+      fill.style.width = pct + '%';
+      fill.style.background = color;
+      num.style.color = color;
+      num.textContent = state.timeLeft;
+    }
+
+    function startGame() {
+      state = { screen: "question", currentQ: 0, selected: null, score: 0, timeLeft: TIMER_SECONDS, timerActive: true, imgErrors: {} };
+      render();
+      startTimer();
+    }
+
+    function handleAnswer(name) {
+      if (state.selected) return;
+      stopTimer();
+      state.selected = name;
+      if (name === questions[state.currentQ].answer) state.score++;
+      render();
+      setTimeout(() => { state.screen = "result"; render(); }, 300);
+    }
+
+    function nextQuestion() {
+      if (state.currentQ + 1 >= questions.length) { state.screen = "gameover"; render(); return; }
+      state.currentQ++;
+      state.selected = null;
+      state.timeLeft = TIMER_SECONDS;
+      state.timerActive = true;
+      state.screen = "question";
+      render();
+      startTimer();
+    }
+
+    function timerColor() {
+      return state.timeLeft > 8 ? '#00e5a0' : state.timeLeft > 4 ? '#ffcc00' : '#ff4455';
+    }
+
+    function render() {
+      const app = document.getElementById('app');
+      const q = questions[state.currentQ];
+      const isCorrect = state.selected === q?.answer;
+      const timedOut = state.selected === "__timeout__";
+
+      if (state.screen === "intro") {
+        app.innerHTML = `
+          <div class="intro">
+            <div class="intro-eyebrow">🎵 The Game That Rocks</div>
+            <h1 class="intro-title-pop">POP</h1>
+            <h1 class="intro-title-zingers">ZINGERS</h1>
+            <p class="intro-sub">Irreverent music trivia for people who remember when MTV played music.</p>
+            <button class="btn-play" onclick="startGame()">Let's Play →</button>
+          </div>`;
+      }
+
+      else if (state.screen === "question") {
+        const pct = (state.timeLeft / TIMER_SECONDS) * 100;
+        const color = timerColor();
+        const choicesHTML = q.choices.map(choice => {
+          const isSel = state.selected === choice.name;
+          const isAns = choice.name === q.answer;
+          let border = '#2a2a2a';
+          let bg = '#111';
+          let nameColor = '#ccc';
+          if (state.selected) {
+            if (isAns) { border = '#00e5a0'; bg = '#001a12'; nameColor = '#00e5a0'; }
+            else if (isSel) { border = '#ff4455'; bg = '#1a0008'; nameColor = '#ff4455'; }
+            else { nameColor = '#555'; }
+          }
+          const imgSrc = state.imgErrors[choice.name] ? null : choice.img;
+          const imgHTML = imgSrc
+            ? `<img class="choice-img" src="${imgSrc}" alt="${choice.name}" onerror="handleImgError('${choice.name}')" style="filter:${state.selected && !isAns ? 'grayscale(60%) brightness(0.6)' : 'none'}">`
+            : `<div class="choice-emoji">🎸</div>`;
+          const checkHTML = state.selected && isAns ? `<div class="choice-check">✓</div>` : '';
+          const transform = isSel ? 'scale(0.97)' : 'scale(1)';
+          return `
+            <button class="choice-btn" onclick="handleAnswer('${choice.name}')" ${state.selected ? 'disabled' : ''}
+              style="border-color:${border}; background:${bg}; transform:${transform};">
+              <div class="choice-img-wrap">${imgHTML}${checkHTML}</div>
+              <div class="choice-name" style="color:${nameColor}; font-weight:${isAns && state.selected ? 'bold' : 'normal'}">${choice.name}</div>
+            </button>`;
+        }).join('');
+
+        app.innerHTML = `
+          <div class="fade-in">
+            <div class="q-header">
+              <div class="q-label">Q ${state.currentQ + 1} / ${questions.length}</div>
+              <div class="q-score">SCORE: ${state.score}</div>
+            </div>
+            <div class="timer-bar"><div class="timer-fill" style="width:${pct}%; background:${color};"></div></div>
+            <div class="timer-num" style="color:${color};">${state.timeLeft}</div>
+            <div class="zinger-box">
+              <div class="zinger-label">🎤 THE ZINGER</div>
+              <p class="zinger-text">"${q.zinger}"</p>
+            </div>
+            <div class="choices">${choicesHTML}</div>
+          </div>`;
+      }
+
+      else if (state.screen === "result") {
+        const emoji = timedOut ? "⏰" : isCorrect ? "🎸" : "😬";
+        const title = timedOut ? "Time's Up!" : isCorrect ? "Nailed It!" : "Ohhh No...";
+        const color = timedOut ? "#ffcc00" : isCorrect ? "#00e5a0" : "#ff4455";
+        const btnLabel = state.currentQ + 1 >= questions.length ? "See Results →" : "Next Zinger →";
+        app.innerHTML = `
+          <div class="result">
+            <div class="result-emoji">${emoji}</div>
+            <h2 class="result-title" style="color:${color}">${title}</h2>
+            <p class="result-answer">The answer was <span>${q.answer}</span></p>
+            <div class="fact-box">
+              <div class="fact-label">💡 DID YOU KNOW</div>
+              <p class="fact-text">${q.funFact}</p>
+            </div>
+            <button class="btn-next" onclick="nextQuestion()">${btnLabel}</button>
+          </div>`;
+      }
+
+      else if (state.screen === "gameover") {
+        const msg = state.score === questions.length ? "You ARE the Zinger 🎸" : state.score === 0 ? "Did you even have a radio?" : "Not bad for a casual listener";
+        app.innerHTML = `
+          <div class="gameover">
+            <div class="gameover-label">FINAL SCORE</div>
+            <div class="gameover-score">${state.score}<span>/${questions.length}</span></div>
+            <p class="gameover-msg">${msg}</p>
+            <button class="btn-again" onclick="startGame()">Play Again →</button>
+          </div>`;
+      }
+    }
+
+    function handleImgError(name) {
+      state.imgErrors[name] = true;
+      render();
+    }
+
+    // Init
+    render();
+  </script>
+</body>
+</html>
