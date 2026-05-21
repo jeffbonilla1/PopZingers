@@ -70,6 +70,7 @@
     .zinger-box { background: #111; border: 1px solid #2a2a2a; padding: 24px; margin-bottom: 28px; border-left: 4px solid #ffcc00; }
     .zinger-label { font-size: 11px; letter-spacing: 4px; color: #ffcc00; font-family: monospace; margin-bottom: 12px; }
     .zinger-text { color: #fff; font-size: 18px; line-height: 1.7; font-style: italic; }
+    /* PHOTO choices */
     .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .choice-btn {
       background: #111; border: 2px solid #2a2a2a;
@@ -80,9 +81,34 @@
     .choice-btn:disabled { cursor: default; }
     .choice-img-wrap { position: relative; padding-top: 75%; background: #1a1a1a; }
     .choice-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top; transition: filter 0.3s; }
-    .choice-emoji { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 40px; }
     .choice-check { position: absolute; top: 8px; right: 8px; background: #00e5a0; color: #000; font-size: 16px; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
     .choice-name { padding: 10px 12px; font-size: 13px; font-family: monospace; letter-spacing: 1px; transition: color 0.3s; }
+
+    /* TEXT-ONLY choices */
+    .choices-text { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .choice-text-btn {
+      background: #111; border: 2px solid #2a2a2a;
+      cursor: pointer; padding: 20px 16px;
+      transition: border-color 0.2s, background 0.2s, transform 0.1s;
+      text-align: center; border-radius: 2px;
+      display: flex; align-items: center; justify-content: center;
+      min-height: 72px;
+    }
+    .choice-text-btn:disabled { cursor: default; }
+    .choice-text-btn:not(:disabled):hover { border-color: #ffcc00; }
+    .choice-text-btn:active { transform: scale(0.97); }
+    .choice-text-name {
+      font-family: monospace; font-size: 14px; font-weight: 700;
+      letter-spacing: 1px; line-height: 1.4;
+      transition: color 0.2s;
+    }
+    .choice-text-check {
+      display: inline-block; margin-left: 8px;
+      background: #00e5a0; color: #000; font-size: 12px;
+      width: 20px; height: 20px; border-radius: 50%;
+      line-height: 20px; text-align: center; font-weight: bold;
+      vertical-align: middle;
+    }
 
     /* RESULT */
     .result { text-align: center; animation: fadeIn 0.4s ease; }
@@ -120,6 +146,18 @@
           { name: "John Lennon", img: "john_lennon.jpg" },
         ],
         funFact: "Kenny later said: 'Although I was there for a high colonic, it was her eyes that penetrated me.'"
+      },
+      {
+        id: 2,
+        zinger: "Which arena rock god famously had a rider demanding the brown M&Ms be removed from the bowl — and actually used it as a serious quality control test?",
+        answer: "David Lee Roth",
+        choices: [
+          { name: "David Lee Roth" },
+          { name: "Ozzy Osbourne" },
+          { name: "Mick Jagger" },
+          { name: "Steven Tyler" },
+        ],
+        funFact: "The M&M clause was buried deep in a 53-page contract rider. If brown M&Ms were present, Roth knew the venue hadn't read the technical specs — meaning the stage could literally collapse."
       }
     ];
 
@@ -215,30 +253,56 @@
       else if (state.screen === "question") {
         const pct = (state.timeLeft / TIMER_SECONDS) * 100;
         const color = timerColor();
-        const choicesHTML = q.choices.map(choice => {
-          const isSel = state.selected === choice.name;
-          const isAns = choice.name === q.answer;
-          let border = '#2a2a2a';
-          let bg = '#111';
-          let nameColor = '#ccc';
-          if (state.selected) {
-            if (isAns) { border = '#00e5a0'; bg = '#001a12'; nameColor = '#00e5a0'; }
-            else if (isSel) { border = '#ff4455'; bg = '#1a0008'; nameColor = '#ff4455'; }
-            else { nameColor = '#555'; }
-          }
-          const imgSrc = state.imgErrors[choice.name] ? null : choice.img;
-          const imgHTML = imgSrc
-            ? `<img class="choice-img" src="${imgSrc}" alt="${choice.name}" onerror="handleImgError('${choice.name}')" style="filter:${state.selected && !isAns ? 'grayscale(60%) brightness(0.6)' : 'none'}">`
-            : `<div class="choice-emoji">🎸</div>`;
-          const checkHTML = state.selected && isAns ? `<div class="choice-check">✓</div>` : '';
-          const transform = isSel ? 'scale(0.97)' : 'scale(1)';
-          return `
-            <button class="choice-btn" onclick="handleAnswer('${choice.name}')" ${state.selected ? 'disabled' : ''}
-              style="border-color:${border}; background:${bg}; transform:${transform};">
-              <div class="choice-img-wrap">${imgHTML}${checkHTML}</div>
-              <div class="choice-name" style="color:${nameColor}; font-weight:${isAns && state.selected ? 'bold' : 'normal'}">${choice.name}</div>
-            </button>`;
-        }).join('');
+
+        // Detect if this question has any images defined
+        const hasPhotos = q.choices && q.choices.some(c => c.img);
+
+        let choicesHTML;
+
+        if (hasPhotos) {
+          // PHOTO mode — existing grid layout
+          choicesHTML = `<div class="choices">` + q.choices.map(choice => {
+            const isSel = state.selected === choice.name;
+            const isAns = choice.name === q.answer;
+            let border = '#2a2a2a', bg = '#111', nameColor = '#ccc';
+            if (state.selected) {
+              if (isAns) { border = '#00e5a0'; bg = '#001a12'; nameColor = '#00e5a0'; }
+              else if (isSel) { border = '#ff4455'; bg = '#1a0008'; nameColor = '#ff4455'; }
+              else { nameColor = '#555'; }
+            }
+            const imgSrc = state.imgErrors[choice.name] ? null : choice.img;
+            const imgHTML = imgSrc
+              ? `<img class="choice-img" src="${imgSrc}" alt="${choice.name}" onerror="handleImgError('${choice.name}')" style="filter:${state.selected && !isAns ? 'grayscale(60%) brightness(0.6)' : 'none'}">`
+              : `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:40px;">🎸</div>`;
+            const checkHTML = state.selected && isAns ? `<div class="choice-check">✓</div>` : '';
+            const transform = isSel ? 'scale(0.97)' : 'scale(1)';
+            return `
+              <button class="choice-btn" onclick="handleAnswer('${choice.name}')" ${state.selected ? 'disabled' : ''}
+                style="border-color:${border}; background:${bg}; transform:${transform};">
+                <div class="choice-img-wrap">${imgHTML}${checkHTML}</div>
+                <div class="choice-name" style="color:${nameColor}; font-weight:${isAns && state.selected ? 'bold' : 'normal'}">${choice.name}</div>
+              </button>`;
+          }).join('') + `</div>`;
+
+        } else {
+          // TEXT-ONLY mode — clean name buttons, intentionally styled
+          choicesHTML = `<div class="choices-text">` + q.choices.map(choice => {
+            const isSel = state.selected === choice.name;
+            const isAns = choice.name === q.answer;
+            let border = '#2a2a2a', bg = '#111', nameColor = '#ccc';
+            if (state.selected) {
+              if (isAns) { border = '#00e5a0'; bg = '#001a12'; nameColor = '#00e5a0'; }
+              else if (isSel) { border = '#ff4455'; bg = '#1a0008'; nameColor = '#ff4455'; }
+              else { nameColor = '#444'; }
+            }
+            const checkHTML = state.selected && isAns ? `<span class="choice-text-check">✓</span>` : '';
+            return `
+              <button class="choice-text-btn" onclick="handleAnswer('${choice.name}')" ${state.selected ? 'disabled' : ''}
+                style="border-color:${border}; background:${bg};">
+                <span class="choice-text-name" style="color:${nameColor};">${choice.name}${checkHTML}</span>
+              </button>`;
+          }).join('') + `</div>`;
+        }
 
         app.innerHTML = `
           <div class="fade-in">
@@ -252,7 +316,7 @@
               <div class="zinger-label">🎤 THE ZINGER</div>
               <p class="zinger-text">"${q.zinger}"</p>
             </div>
-            <div class="choices">${choicesHTML}</div>
+            ${choicesHTML}
           </div>`;
       }
 
