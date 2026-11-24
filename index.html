@@ -126,12 +126,38 @@
     .gameover-score { font-size: clamp(72px, 20vw, 120px); font-weight: 900; color: #fff; line-height: 1; text-shadow: 4px 4px 0 #ffcc00; }
     .gameover-score span { font-size: 0.4em; color: #555; }
     .gameover-msg { color: #888; margin-bottom: 40px; font-family: monospace; }
+
+    /* BOOKS */
+    .book-box { background: #111; border: 1px solid #2a2a2a; border-left: 4px solid #ffcc00; padding: 20px; margin: 0 auto 20px; text-align: left; max-width: 480px; }
+    .book-label { font-size: 11px; letter-spacing: 3px; color: #ffcc00; font-family: monospace; margin-bottom: 12px; }
+    .book-item + .book-item { margin-top: 16px; padding-top: 16px; border-top: 1px solid #222; }
+    .book-title { color: #fff; font-size: 17px; font-weight: bold; margin-bottom: 4px; }
+    .book-blurb { color: #aaa; font-size: 14px; line-height: 1.6; }
+    .btn-book { display: inline-block; margin-top: 10px; background: #ffcc00; color: #0d0d0d; text-decoration: none; padding: 10px 18px; font-family: monospace; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; font-size: 13px; box-shadow: 3px 3px 0 #ff4455; }
+
+    /* SIGNUP */
+    .signup-box { background: #111; border: 1px solid #2a2a2a; border-left: 4px solid #ff4455; padding: 20px; margin: 0 auto 32px; text-align: left; max-width: 480px; }
+    .signup-label { font-size: 11px; letter-spacing: 3px; color: #ff4455; font-family: monospace; margin-bottom: 8px; }
+    .signup-text { color: #bbb; font-size: 15px; line-height: 1.6; margin-bottom: 14px; }
+    .signup-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .signup-input { flex: 1 1 200px; background: #0d0d0d; border: 2px solid #2a2a2a; color: #fff; padding: 12px; font-family: monospace; font-size: 14px; }
+    .signup-input:focus { outline: none; border-color: #ffcc00; }
+    .btn-signup { background: #ffcc00; color: #0d0d0d; border: none; padding: 12px 20px; font-family: monospace; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; cursor: pointer; box-shadow: 3px 3px 0 #ff4455; }
+    .btn-signup:disabled { opacity: 0.6; cursor: default; }
+    .signup-msg { margin-top: 10px; font-family: monospace; font-size: 13px; }
   </style>
 </head>
 <body>
   <div class="bg-gradient"></div>
   <div class="bg-vinyl"></div>
   <div class="game-wrap" id="app"></div>
+
+  <!-- Hidden copy of the signup form so Netlify Forms detects it at deploy time -->
+  <form name="signup" data-netlify="true" netlify-honeypot="bot-field" hidden>
+    <input type="email" name="email">
+    <input type="text" name="score">
+    <input type="text" name="bot-field">
+  </form>
 
   <script>
     const questions = [
@@ -748,6 +774,81 @@
       imgErrors: {}
     };
     let timerInterval = null;
+    // BOOK LINKS: paste the Amazon links here when the books go live.
+    // While these are empty, the end screen shows a "coming soon" teaser instead of buy buttons.
+    const BOOKS = [
+      { title: "The PopZingers Trivia Book", blurb: "150+ of the wildest true stories behind the songs, with a question on one page and the story on the next.", url: "" },
+      { title: "The PopZingers Party Book", blurb: "Fill-in-the-blank rock star stories for game night, bar night or any night with a drink in hand.", url: "" },
+    ];
+
+    function booksHTML() {
+      const live = BOOKS.filter(b => b.url);
+      if (live.length) {
+        return `
+          <div class="book-box">
+            <div class="book-label">📚 LOVED THE ZINGERS? GET THE BOOKS</div>
+            ${live.map(b => `
+              <div class="book-item">
+                <div class="book-title">${b.title}</div>
+                <p class="book-blurb">${b.blurb}</p>
+                <a class="btn-book" href="${b.url}" target="_blank" rel="noopener">Get It on Amazon →</a>
+              </div>`).join('')}
+          </div>`;
+      }
+      return `
+        <div class="book-box">
+          <div class="book-label">📚 COMING SOON: THE POPZINGERS BOOKS</div>
+          ${BOOKS.map(b => `
+            <div class="book-item">
+              <div class="book-title">${b.title}</div>
+              <p class="book-blurb">${b.blurb}</p>
+            </div>`).join('')}
+        </div>`;
+    }
+
+    let signupStatus = null; // null | "sending" | "done" | "error"
+
+    function signupHTML() {
+      if (signupStatus === "done") {
+        return `
+          <div class="signup-box">
+            <div class="signup-label">🎤 YOU'RE ON THE LIST</div>
+            <p class="signup-text">Thanks! We'll let you know when the books and new games drop.</p>
+          </div>`;
+      }
+      const sending = signupStatus === "sending";
+      const msg = signupStatus === "error"
+        ? `<div class="signup-msg" style="color:#ff4455;">Hmm, that didn't go through. Check the address and try again.</div>`
+        : '';
+      return `
+        <div class="signup-box">
+          <div class="signup-label">🎤 WANT MORE ZINGERS?</div>
+          <p class="signup-text">Be the first to know when the books and new trivia games drop. No spam, just zingers.</p>
+          <form onsubmit="submitSignup(event)" class="signup-row">
+            <input class="signup-input" type="email" name="email" id="signup-email" placeholder="you@example.com" required ${sending ? 'disabled' : ''}>
+            <input type="text" name="bot-field" id="signup-bot" style="display:none" tabindex="-1" autocomplete="off">
+            <button class="btn-signup" type="submit" ${sending ? 'disabled' : ''}>${sending ? 'Sending...' : 'Sign Me Up'}</button>
+          </form>
+          ${msg}
+        </div>`;
+    }
+
+    async function submitSignup(e) {
+      e.preventDefault();
+      const email = document.getElementById('signup-email').value.trim();
+      const bot = document.getElementById('signup-bot').value;
+      if (!email) return;
+      signupStatus = "sending";
+      render();
+      try {
+        const body = new URLSearchParams({ "form-name": "signup", email, score: `${state.score}/${questions.length}`, "bot-field": bot });
+        const res = await fetch("/", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: body.toString() });
+        signupStatus = res.ok ? "done" : "error";
+      } catch (err) {
+        signupStatus = "error";
+      }
+      render();
+    }
 
     function startTimer() {
       clearInterval(timerInterval);
@@ -922,6 +1023,8 @@
             <div class="gameover-label">FINAL SCORE</div>
             <div class="gameover-score">${state.score}<span>/${questions.length}</span></div>
             <p class="gameover-msg">${msg}</p>
+            ${booksHTML()}
+            ${signupHTML()}
             <button class="btn-again" onclick="startGame()">Play Again →</button>
           </div>`;
       }
