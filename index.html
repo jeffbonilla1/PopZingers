@@ -3,7 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pop Zingers — Irreverent Music Trivia</title>
+  <title>PopZingers: Irreverent Music Trivia</title>
+  <meta name="description" content="Free music trivia for people who remember when MTV played music. 50 wild true stories from rock and pop history. Think you can beat my score?">
+  <!-- Link preview (Facebook, LinkedIn, texts, X). og-image.png must sit next to this file. -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://popzingers.netlify.app/">
+  <meta property="og:title" content="PopZingers: Think You Can Beat My Score?">
+  <meta property="og:description" content="Free music trivia for people who remember when MTV played music. 50 wild true stories from rock and pop history.">
+  <meta property="og:image" content="https://popzingers.netlify.app/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="PopZingers music trivia game">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="PopZingers: Think You Can Beat My Score?">
+  <meta name="twitter:description" content="Free music trivia for people who remember when MTV played music.">
+  <meta name="twitter:image" content="https://popzingers.netlify.app/og-image.png">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -198,7 +212,7 @@
       },
       {
         id: 2,
-        zinger: "Which arena rock god famously had a rider demanding the brown M&Ms be removed from the bowl — and actually used it as a serious quality control test?",
+        zinger: "Which arena rock god famously had a rider demanding the brown M&Ms be removed from the bowl, and actually used it as a serious quality control test?",
         answer: "David Lee Roth",
         choices: [
           { name: "David Lee Roth" },
@@ -206,11 +220,11 @@
           { name: "Mick Jagger" },
           { name: "Steven Tyler" },
         ],
-        funFact: "The M&M clause was buried deep in a 53-page contract rider. If brown M&Ms were present, Roth knew the venue hadn't read the technical specs — meaning the stage could literally collapse."
+        funFact: "The M&M clause was buried deep in a 53-page contract rider. If brown M&Ms were present, Roth knew the venue hadn't read the technical specs, meaning the stage could literally collapse."
       },
   {
     id: 3,
-    zinger: "Before he managed one of the most iconic performers in music history, this artist's future manager ran a sideshow act where chickens appeared to 'dance' — thanks to a hidden hotplate slowly toasting their little feet. Which superstar inherited this sizzling genius?",
+    zinger: "Before he managed one of the most iconic performers in music history, this artist's future manager ran a sideshow act where chickens appeared to 'dance' thanks to a hidden hotplate slowly toasting their little feet. Which superstar inherited this sizzling genius?",
     answer: "Elvis Presley",
     choices: [
       { name: "Jimi Hendrix" },
@@ -1085,7 +1099,7 @@
         let choicesHTML;
 
         if (hasPhotos) {
-          // PHOTO mode — existing grid layout
+          // PHOTO mode: existing grid layout
           choicesHTML = `<div class="choices">` + q.choices.map((choice, ci) => {
             const isSel = state.selected === choice.name;
             const isAns = choice.name === q.answer;
@@ -1110,7 +1124,7 @@
           }).join('') + `</div>`;
 
         } else {
-          // TEXT-ONLY mode — clean name buttons, intentionally styled
+          // TEXT-ONLY mode: clean name buttons, intentionally styled
           choicesHTML = `<div class="choices-text">` + q.choices.map((choice, ci) => {
             const isSel = state.selected === choice.name;
             const isAns = choice.name === q.answer;
