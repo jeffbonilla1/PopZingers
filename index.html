@@ -1213,7 +1213,17 @@
 
     function startGame() {
       clearProgress();
-      questions = (challengeFromLink && challengeSet) ? challengeSet : dealQuestions();
+      if (challengeFromLink && challengeSet) {
+        questions = challengeSet;
+        // Count the friend's questions as seen so their next game is all new
+        try {
+          const seen = JSON.parse(localStorage.getItem(SEEN_KEY)) || [];
+          const merged = Array.from(new Set(seen.concat(currentIds())));
+          localStorage.setItem(SEEN_KEY, JSON.stringify(merged.length >= ALL_QUESTIONS.length ? currentIds() : merged));
+        } catch (e) {}
+      } else {
+        questions = dealQuestions();
+      }
       track("game_start", { challenged: challengeScore !== null, score_to_beat: challengeScore });
       state = { screen: "question", currentQ: 0, selected: null, score: 0, timeLeft: TIMER_SECONDS, timerActive: true, imgErrors: {} };
       render();
