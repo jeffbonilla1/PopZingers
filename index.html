@@ -24,7 +24,7 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://popzingers.netlify.app/">
   <meta property="og:title" content="PopZingers: Think You Can Beat My Score?">
-  <meta property="og:description" content="Free music trivia for people who remember when MTV played music. 50 wild true stories from rock and pop history.">
+  <meta property="og:description" content="Free music trivia for people who remember when MTV played music. 15 wild true stories, about 5 minutes.">
   <meta property="og:image" content="https://popzingers.netlify.app/og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -148,13 +148,14 @@
     .fact-box { background: #111; border: 1px solid #2a2a2a; padding: 20px; margin-bottom: 32px; border-left: 4px solid #888; text-align: left; }
     .fact-label { font-size: 11px; letter-spacing: 3px; color: #888; font-family: monospace; margin-bottom: 10px; }
     .fact-text { color: #bbb; font-size: 15px; line-height: 1.7; }
+    .save-note { color: #777; font-family: monospace; font-size: 12px; letter-spacing: 1px; margin-top: 14px; text-align: center; }
 
     /* GAMEOVER */
     .gameover { text-align: center; animation: fadeIn 0.5s ease; }
     .gameover-label { font-size: 11px; letter-spacing: 5px; color: #ffcc00; font-family: monospace; margin-bottom: 16px; }
-    .gameover-score { font-size: clamp(72px, 20vw, 120px); font-weight: 900; color: #fff; line-height: 1; text-shadow: 4px 4px 0 #ffcc00; }
+    .gameover-score { font-size: clamp(72px, 20vw, 120px); font-weight: 900; color: #fff; line-height: 1.15; text-shadow: 4px 4px 0 #ffcc00; margin-bottom: 18px; }
     .gameover-score span { font-size: 0.4em; color: #555; }
-    .gameover-msg { color: #888; margin-bottom: 40px; font-family: monospace; }
+    .gameover-msg { color: #ffcc00; font-size: 16px; letter-spacing: 1px; margin-bottom: 36px; font-family: monospace; font-weight: 700; }
 
     /* INCOMING CHALLENGE + RESULTS */
     .challenged { border: 3px solid #ff4455; background: #140816; padding: 22px 18px; max-width: 420px; margin: -10px auto 30px; box-shadow: 6px 6px 0 #ffcc00; }
@@ -195,6 +196,8 @@
     .share-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
     .btn-share { flex: 1 1 auto; background: #0d0d0d; color: #ccc; border: 2px solid #2a2a2a; padding: 10px 12px; font-family: monospace; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; }
     .btn-share:hover { border-color: #00e5a0; color: #fff; }
+
+    .length-note { color: #888; font-family: monospace; font-size: 13px; margin-top: 18px; letter-spacing: 1px; }
 
     /* RESUME */
     .resume-note { color: #ffcc00; font-family: monospace; font-size: 14px; margin: -16px auto 24px; max-width: 420px; line-height: 1.6; }
@@ -239,7 +242,7 @@
   </form>
 
   <script>
-    const questions = [
+    const ALL_QUESTIONS = [
       {
         id: 1,
         zinger: "Which Jesus-looking soft rock heartthrob fell in love with his holistic practitioner... who gave him an enema?",
@@ -842,6 +845,30 @@
   },
 ];
 
+    // EACH GAME DEALS A RANDOM SET FROM THE FULL POOL
+    // Players get fresh questions first; once they've seen them all, the deck reshuffles.
+    const ROUND_SIZE = 15;
+    const SEEN_KEY = "popzingers-seen";
+    let questions = ALL_QUESTIONS.slice(0, ROUND_SIZE);
+    function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+    function setFromIds(ids) {
+      if (!Array.isArray(ids) || !ids.length) return null;
+      const byId = new Map(ALL_QUESTIONS.map(q => [q.id, q]));
+      const qs = ids.map(i => byId.get(Number(i))).filter(Boolean);
+      return qs.length === ids.length ? qs : null;
+    }
+    function currentIds() { return questions.map(q => q.id); }
+    function dealQuestions() {
+      let seen = [];
+      try { seen = JSON.parse(localStorage.getItem(SEEN_KEY)) || []; } catch (e) {}
+      const fresh = shuffle(ALL_QUESTIONS.filter(q => !seen.includes(q.id)));
+      const used = shuffle(ALL_QUESTIONS.filter(q => seen.includes(q.id)));
+      const pick = fresh.concat(used).slice(0, ROUND_SIZE);
+      const nextSeen = fresh.length >= ROUND_SIZE ? seen.concat(pick.map(q => q.id)) : pick.map(q => q.id);
+      try { localStorage.setItem(SEEN_KEY, JSON.stringify(nextSeen)); } catch (e) {}
+      return pick;
+    }
+
     const TIMER_SECONDS = 20;
     let state = {
       screen: "intro",
@@ -863,13 +890,14 @@
     // SAVE PROGRESS: remembers where a player left off (this browser only)
     const SAVE_KEY = "popzingers-progress";
     function saveProgress(nextIndex) {
-      if (nextIndex % 10 === 0 && nextIndex < questions.length) track("game_progress", { questions_answered: nextIndex, score: state.score });
-      try { localStorage.setItem(SAVE_KEY, JSON.stringify({ q: nextIndex, score: state.score, total: questions.length })); } catch (e) {}
+      if (nextIndex % 5 === 0 && nextIndex < questions.length) track("game_progress", { questions_answered: nextIndex, score: state.score });
+      try { localStorage.setItem(SAVE_KEY, JSON.stringify({ q: nextIndex, score: state.score, ids: currentIds() })); } catch (e) {}
     }
     function loadProgress() {
       try {
         const p = JSON.parse(localStorage.getItem(SAVE_KEY));
-        if (p && p.total === questions.length && p.q > 0 && p.q < questions.length) return p;
+        const set = p && setFromIds(p.ids);
+        if (set && p.q > 0 && p.q < set.length) return Object.assign({}, p, { set });
       } catch (e) {}
       return null;
     }
@@ -879,15 +907,18 @@
     // CHALLENGE A FRIEND
     // A shared link looks like ?beat=42. The friend sees the score to beat, then a head-to-head result at the end.
     const CHALLENGE_KEY = "popzingers-challenge";
-    let challengeScore = null, challengeFromLink = false;
+    let challengeScore = null, challengeFromLink = false, challengeSet = null;
     (function readChallenge() {
       try {
-        const v = new URLSearchParams(location.search).get("beat");
-        const n = parseInt(v, 10);
-        if (!isNaN(n) && n >= 0 && n <= questions.length) {
-          // Fresh challenge from a friend's link: start clean at question 1
+        const qp = new URLSearchParams(location.search);
+        const n = parseInt(qp.get("beat"), 10);
+        const set = setFromIds((qp.get("set") || "").split(".").filter(Boolean));
+        if (set && !isNaN(n) && n >= 0 && n <= set.length) {
+          // Fresh challenge from a friend's link: same questions, start clean at question 1
           challengeScore = n;
           challengeFromLink = true;
+          challengeSet = set;
+          questions = set;
           track("challenge_link_open", { score_to_beat: n });
           localStorage.removeItem(SAVE_KEY);
           localStorage.setItem(CHALLENGE_KEY, String(n));
@@ -902,7 +933,7 @@
       } catch (e) {}
     })();
     function clearChallenge() {
-      challengeScore = null; challengeFromLink = false;
+      challengeScore = null; challengeFromLink = false; challengeSet = null;
       try { localStorage.removeItem(CHALLENGE_KEY); } catch (e) {}
     }
     function playAgain() {
@@ -912,7 +943,7 @@
     }
 
     function gameURL() { return location.origin + location.pathname; }
-    function challengeURL() { return `${gameURL()}?beat=${state.score}`; }
+    function challengeURL() { return `${gameURL()}?beat=${state.score}&set=${currentIds().join(".")}`; }
     function challengeMessage() {
       return `I just scored ${state.score}/${questions.length} on PopZingers, the music trivia game for people who remember when MTV played music. Think you can beat me?`;
     }
@@ -991,6 +1022,8 @@
     // Step 2: after they share (or tap "not now"), the box flips to the book:
     //         email signup now, Amazon button once BOOKS has a url.
     let shared = false, skippedShare = false, bookClicked = false;
+    const SIGNED_KEY = "popzingers-signedup";
+    function alreadySignedUp() { try { return localStorage.getItem(SIGNED_KEY) === "1"; } catch (e) { return false; } }
     function markShared() { if (!shared) { shared = true; render(); } }
     function skipShare() { skippedShare = true; track("challenge_skip", { score: state.score }); render(); }
     function bookClick() { bookClicked = true; track("book_click", { score: state.score }); setTimeout(render, 400); }
@@ -1009,6 +1042,15 @@
 
       const live = BOOKS.find(b => b.url);
       const book = live || BOOKS[0];
+
+      if (!live && signupStatus !== "done" && alreadySignedUp()) {
+        return `
+          <div class="cta-box">
+            <div class="cta-label">${shared ? "🎸 THANKS FOR SHARING!" : "🎤 YOU'RE ALREADY ON THE LIST!"}</div>
+            <div class="book-hook">${book.title} is coming soon.</div>
+            <p class="cta-text">We'll let you know the second it drops. Rock on.</p>
+          </div>`;
+      }
 
       if (signupStatus === "done" || bookClicked) {
         return `
@@ -1054,6 +1096,7 @@
     function resumeGame() {
       const p = loadProgress();
       if (!p) { startGame(); return; }
+      questions = p.set;
       state = { screen: "question", currentQ: p.q, selected: null, score: p.score, timeLeft: TIMER_SECONDS, timerActive: true, imgErrors: {} };
       track("game_resume", { question_number: p.q + 1, score: p.score });
       render();
@@ -1130,7 +1173,7 @@
         const body = new URLSearchParams({ "form-name": "signup", email, score: `${state.score}/${questions.length}`, "bot-field": bot });
         const res = await fetch("/", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: body.toString() });
         signupStatus = res.ok ? "done" : "error";
-        if (res.ok) track("book_signup", { score: state.score });
+        if (res.ok) { track("book_signup", { score: state.score }); try { localStorage.setItem(SIGNED_KEY, "1"); } catch (e) {} }
       } catch (err) {
         signupStatus = "error";
       }
@@ -1170,6 +1213,7 @@
 
     function startGame() {
       clearProgress();
+      questions = (challengeFromLink && challengeSet) ? challengeSet : dealQuestions();
       track("game_start", { challenged: challengeScore !== null, score_to_beat: challengeScore });
       state = { screen: "question", currentQ: 0, selected: null, score: 0, timeLeft: TIMER_SECONDS, timerActive: true, imgErrors: {} };
       render();
@@ -1225,11 +1269,13 @@
                   <div class="challenged-score">${challengeScore}<span>/${questions.length}</span></div>
                   <p class="challenged-text">Your friend scored ${challengeScore}. Think you can beat them?</p>
                 </div>
-                <button class="btn-play" onclick="startGame()">Accept the Challenge →</button>`;
+                <button class="btn-play" onclick="startGame()">Accept the Challenge →</button>
+                <p class="length-note">Same ${questions.length} questions your friend got. About 5 minutes.</p>`;
               const p = loadProgress();
-              if (!p) return `<button class="btn-play" onclick="startGame()">Let's Play →</button>`;
+              if (!p) return `<button class="btn-play" onclick="startGame()">Let's Play →</button>
+                <p class="length-note">${ROUND_SIZE} zingers. About 5 minutes. New questions every game.</p>`;
               return `
-                <p class="resume-note">Welcome back! You were on question ${p.q + 1} of ${questions.length} with a score of ${p.score}.${challengeScore !== null ? ` Score to beat: ${challengeScore}.` : ''}</p>
+                <p class="resume-note">Welcome back! You were on question ${p.q + 1} of ${p.set.length} with a score of ${p.score}.${challengeScore !== null ? ` Score to beat: ${challengeScore}.` : ''}</p>
                 <button class="btn-play" onclick="resumeGame()">Keep Playing →</button>
                 <div><button class="btn-restart" onclick="playAgain()">Start Over</button></div>`;
             })()}
@@ -1321,6 +1367,7 @@
               <p class="fact-text">${q.funFact}</p>
             </div>
             <button class="btn-next" onclick="nextQuestion()">${btnLabel}</button>
+            ${state.currentQ < questions.length - 1 ? `<p class="save-note">Gotta go? Your progress is saved.</p>` : ''}
           </div>`;
       }
 
@@ -1339,7 +1386,7 @@
             <p class="gameover-msg">${msg}</p>
             ${challengeResultHTML()}
             ${endCTAHTML()}
-            <button class="btn-again-link" onclick="playAgain()">Play again</button>
+            <button class="btn-again-link" onclick="playAgain()">Play again (new questions)</button>
           </div>`;
       }
     }
@@ -1351,8 +1398,8 @@
 
     // Init
     // Hidden test shortcuts (for testing only, players never see these):
-    //   ?end      jumps to the final score screen (?end=37 shows a score of 37)
-    //   ?q=50     starts the game at question 50
+    //   ?end      jumps to the final score screen (?end=12 shows a score of 12)
+    //   ?q=15     starts the game at question 15 (the last one)
     const params = new URLSearchParams(location.search);
     if (params.has("end")) {
       const sc = parseInt(params.get("end"), 10);
