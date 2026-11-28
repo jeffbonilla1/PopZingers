@@ -127,6 +127,28 @@
     .gameover-score span { font-size: 0.4em; color: #555; }
     .gameover-msg { color: #888; margin-bottom: 40px; font-family: monospace; }
 
+    /* CHALLENGE */
+    .challenge-banner { color: #fff; background: #1a0a2e; border: 2px solid #ff4455; padding: 12px 16px; font-family: monospace; font-size: 15px; max-width: 420px; margin: -16px auto 28px; line-height: 1.5; }
+    .challenge-banner b { color: #ffcc00; }
+    .vs-box { max-width: 480px; margin: 0 auto 20px; background: #111; border: 2px solid #ffcc00; padding: 16px 20px; text-align: left; }
+    .vs-row { display: flex; justify-content: space-between; font-family: monospace; font-size: 16px; color: #ccc; padding: 4px 0; }
+    .vs-row b { color: #ffcc00; font-size: 20px; }
+    .vs-verdict { margin-top: 10px; font-family: monospace; font-weight: 900; color: #fff; letter-spacing: 1px; }
+    .challenge-box { background: #111; border: 1px solid #2a2a2a; border-left: 4px solid #00e5a0; padding: 20px; margin: 0 auto 20px; text-align: left; max-width: 480px; }
+    .challenge-label { font-size: 11px; letter-spacing: 3px; color: #00e5a0; font-family: monospace; margin-bottom: 10px; }
+    .challenge-text { color: #ddd; font-size: 15px; line-height: 1.6; font-style: italic; margin-bottom: 14px; }
+    .btn-challenge { width: 100%; background: #00e5a0; color: #0d0d0d; border: none; padding: 14px 18px; font-family: monospace; font-weight: 900; font-size: 16px; text-transform: uppercase; letter-spacing: 2px; cursor: pointer; box-shadow: 4px 4px 0 #ff4455; }
+    .btn-challenge:active { transform: translate(4px,4px); box-shadow: 0 0 0 #ff4455; }
+    .challenge-tag { color: #888; font-size: 13px; text-align: center; margin-top: 12px; font-family: monospace; }
+    .share-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .btn-share { flex: 1 1 auto; background: #0d0d0d; color: #ccc; border: 2px solid #2a2a2a; padding: 10px 12px; font-family: monospace; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; }
+    .btn-share:hover { border-color: #00e5a0; color: #fff; }
+
+    /* RESUME */
+    .resume-note { color: #ffcc00; font-family: monospace; font-size: 14px; margin: -16px auto 24px; max-width: 420px; line-height: 1.6; }
+    .btn-restart { margin-top: 22px; background: none; border: none; color: #888; font-family: monospace; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; text-decoration: underline; cursor: pointer; }
+    .btn-restart:hover { color: #fff; }
+
     /* BOOKS */
     .book-box { background: #111; border: 1px solid #2a2a2a; border-left: 4px solid #ffcc00; padding: 20px; margin: 0 auto 20px; text-align: left; max-width: 480px; }
     .book-label { font-size: 11px; letter-spacing: 3px; color: #ffcc00; font-family: monospace; margin-bottom: 12px; }
@@ -775,6 +797,118 @@
       imgErrors: {}
     };
     let timerInterval = null;
+
+    // SAVE PROGRESS: remembers where a player left off (this browser only)
+    const SAVE_KEY = "popzingers-progress";
+    function saveProgress(nextIndex) {
+      try { localStorage.setItem(SAVE_KEY, JSON.stringify({ q: nextIndex, score: state.score, total: questions.length })); } catch (e) {}
+    }
+    function loadProgress() {
+      try {
+        const p = JSON.parse(localStorage.getItem(SAVE_KEY));
+        if (p && p.total === questions.length && p.q > 0 && p.q < questions.length) return p;
+      } catch (e) {}
+      return null;
+    }
+    function clearProgress() {
+      try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+    }
+    // CHALLENGE A FRIEND
+    // A shared link looks like ?beat=42. The friend sees the score to beat, then a head-to-head result at the end.
+    const CHALLENGE_KEY = "popzingers-challenge";
+    let challengeScore = null;
+    (function readChallenge() {
+      try {
+        const v = new URLSearchParams(location.search).get("beat");
+        const n = parseInt(v, 10);
+        if (!isNaN(n) && n >= 0 && n <= questions.length) {
+          challengeScore = n;
+          localStorage.setItem(CHALLENGE_KEY, String(n));
+        } else {
+          const saved = parseInt(localStorage.getItem(CHALLENGE_KEY), 10);
+          if (!isNaN(saved)) challengeScore = saved;
+        }
+      } catch (e) {}
+    })();
+
+    function gameURL() { return location.origin + location.pathname; }
+    function challengeURL() { return `${gameURL()}?beat=${state.score}`; }
+    function challengeMessage() {
+      return `I just scored ${state.score}/${questions.length} on PopZingers, the music trivia game for people who remember when MTV played music. Think you can beat me?`;
+    }
+
+    function shareNative() {
+      const text = challengeMessage(), url = challengeURL();
+      if (navigator.share) {
+        navigator.share({ title: "PopZingers Challenge", text, url }).catch(() => {});
+      } else {
+        copyChallenge();
+      }
+    }
+    function copyChallenge() {
+      const full = `${challengeMessage()} ${challengeURL()}`;
+      const done = () => {
+        const b = document.getElementById("copy-btn");
+        if (b) { b.textContent = "Copied! Now paste it to a friend"; setTimeout(() => { if (b) b.textContent = "Copy Challenge Link"; }, 2500); }
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(full).then(done).catch(() => fallbackCopy(full, done));
+      } else { fallbackCopy(full, done); }
+    }
+    function fallbackCopy(text, done) {
+      const t = document.createElement("textarea"); t.value = text; document.body.appendChild(t); t.select();
+      try { document.execCommand("copy"); } catch (e) {}
+      document.body.removeChild(t); done();
+    }
+    function shareEmail() {
+      const subject = encodeURIComponent(`I scored ${state.score}/${questions.length} on PopZingers. Your move.`);
+      const body = encodeURIComponent(`${challengeMessage()}\n\n${challengeURL()}`);
+      location.href = `mailto:?subject=${subject}&body=${body}`;
+    }
+    function shareFacebook() {
+      window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(challengeURL())}`, "_blank", "noopener");
+    }
+    function shareLinkedIn() {
+      window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(challengeURL())}`, "_blank", "noopener");
+    }
+
+    function challengeResultHTML() {
+      if (challengeScore === null) return "";
+      const me = state.score, them = challengeScore;
+      const verdict = me > them ? "🏆 NEW CHAMPION! You beat your friend."
+                    : me === them ? "🤝 DEAD EVEN. Somebody needs a rematch."
+                    : "😬 THEY WIN THIS ROUND. Rematch?";
+      return `
+        <div class="vs-box">
+          <div class="vs-row"><span>Your score</span><b>${me}</b></div>
+          <div class="vs-row"><span>Your friend's score</span><b>${them}</b></div>
+          <div class="vs-verdict">${verdict}</div>
+        </div>`;
+    }
+
+    function challengeHTML() {
+      return `
+        <div class="challenge-box">
+          <div class="challenge-label">🎤 THINK YOUR FRIENDS CAN DO BETTER?</div>
+          <p class="challenge-text">"${challengeMessage()}"</p>
+          <button class="btn-challenge" onclick="shareNative()">Challenge a Friend →</button>
+          <p class="challenge-tag">Share the challenge. Compare scores. Bragging rights are on the line.</p>
+          <div class="share-row">
+            <button class="btn-share" id="copy-btn" onclick="copyChallenge()">Copy Challenge Link</button>
+            <button class="btn-share" onclick="shareEmail()">Email</button>
+            <button class="btn-share" onclick="shareFacebook()">Facebook</button>
+            <button class="btn-share" onclick="shareLinkedIn()">LinkedIn</button>
+          </div>
+        </div>`;
+    }
+
+    function resumeGame() {
+      const p = loadProgress();
+      if (!p) { startGame(); return; }
+      state = { screen: "question", currentQ: p.q, selected: null, score: p.score, timeLeft: TIMER_SECONDS, timerActive: true, imgErrors: {} };
+      render();
+      startTimer();
+    }
     // BOOK LINKS: paste the Amazon links here when the books go live.
     // While these are empty, the end screen shows a "coming soon" teaser instead of buy buttons.
     const BOOKS = [
@@ -860,6 +994,7 @@
           clearInterval(timerInterval);
           state.timerActive = false;
           state.selected = "__timeout__";
+          saveProgress(state.currentQ + 1);
           render();
           setTimeout(() => { state.screen = "result"; render(); }, 300);
           return;
@@ -883,6 +1018,7 @@
     }
 
     function startGame() {
+      clearProgress();
       state = { screen: "question", currentQ: 0, selected: null, score: 0, timeLeft: TIMER_SECONDS, timerActive: true, imgErrors: {} };
       render();
       startTimer();
@@ -894,12 +1030,13 @@
       stopTimer();
       state.selected = name;
       if (name === questions[state.currentQ].answer) state.score++;
+      saveProgress(state.currentQ + 1);
       render();
       setTimeout(() => { state.screen = "result"; render(); }, 300);
     }
 
     function nextQuestion() {
-      if (state.currentQ + 1 >= questions.length) { state.screen = "gameover"; render(); return; }
+      if (state.currentQ + 1 >= questions.length) { clearProgress(); state.screen = "gameover"; render(); return; }
       state.currentQ++;
       state.selected = null;
       state.timeLeft = TIMER_SECONDS;
@@ -926,7 +1063,15 @@
             <h1 class="intro-title-pop">POP</h1>
             <h1 class="intro-title-zingers">ZINGERS</h1>
             <p class="intro-sub">Irreverent music trivia for people who remember when MTV played music.</p>
-            <button class="btn-play" onclick="startGame()">Let's Play →</button>
+            ${challengeScore !== null ? `<p class="challenge-banner">🎸 Your friend scored <b>${challengeScore}/${questions.length}</b>. Think you can beat them?</p>` : ''}
+            ${(() => {
+              const p = loadProgress();
+              if (!p) return `<button class="btn-play" onclick="startGame()">Let's Play →</button>`;
+              return `
+                <p class="resume-note">Welcome back! You were on question ${p.q + 1} of ${questions.length} with a score of ${p.score}.</p>
+                <button class="btn-play" onclick="resumeGame()">Keep Playing →</button>
+                <div><button class="btn-restart" onclick="startGame()">Start Over</button></div>`;
+            })()}
           </div>`;
       }
 
@@ -1019,12 +1164,20 @@
       }
 
       else if (state.screen === "gameover") {
-        const msg = state.score === questions.length ? "You ARE the Zinger 🎸" : state.score === 0 ? "Did you even have a radio?" : "Not bad for a casual listener";
+        const pct = state.score / questions.length;
+        const msg = state.score === questions.length ? "PERFECT SCORE. You ARE the Zinger 🎸"
+                  : pct >= 0.9 ? "ROCK GOD STATUS. We bow down."
+                  : pct >= 0.7 ? "NICE WORK, ROCK STAR! You know your music."
+                  : pct >= 0.5 ? "SOLID. You definitely owned a mixtape."
+                  : pct >= 0.3 ? "Not bad for a casual listener."
+                  : "Did you even have a radio?";
         app.innerHTML = `
           <div class="gameover">
             <div class="gameover-label">FINAL SCORE</div>
             <div class="gameover-score">${state.score}<span>/${questions.length}</span></div>
             <p class="gameover-msg">${msg}</p>
+            ${challengeResultHTML()}
+            ${challengeHTML()}
             ${booksHTML()}
             ${signupHTML()}
             <button class="btn-again" onclick="startGame()">Play Again →</button>
